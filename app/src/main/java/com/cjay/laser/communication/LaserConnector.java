@@ -1,4 +1,6 @@
-package com.cjay.laser;
+package com.cjay.laser.communication;
+
+import com.cjay.laser.Settings;
 
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
@@ -14,46 +16,44 @@ import fi.iki.elonen.NanoHTTPD;
  * Created by Christopher on 20.01.2018.
  */
 
-public class LaserConnector implements Settings.OnChangedListener {
+public class LaserConnector{
 
-    private static LaserConnector instance;
-
-    private NanoHTTPD mOnReadyServer;
-    private HashSet<OnLaserReadyListener> mOnLaserReadyListeners;
-
-    @FunctionalInterface
-    public interface OnLaserReadyListener{
-        void onReady();
-    }
-
-    private LaserConnector(){
-        mOnLaserReadyListeners = new HashSet<>();
-        Settings.setOnChangedListeners(this);
-    }
+    private static LaserConnector sInstance;
 
     public static LaserConnector getConnector() {
-        if (instance == null) {
+        if (sInstance == null) {
             synchronized (LaserConnector.class){
-                if(instance == null){
-                    instance = new LaserConnector();
+                if(sInstance == null){
+                    sInstance = new LaserConnector();
                 }
             }
         }
 
-        return instance;
+        return sInstance;
     }
 
-    @Override
-    public void onSettingsChanged(Settings newSettings) {
-        if(mOnReadyServer != null && mOnReadyServer.getListeningPort() != newSettings.getOnReadyServerPort()){
-            stopServer();
-            startServer();
+    private NanoHTTPD mOnReadyServer;
+    private HashSet<OnLaserReadyListener> mOnLaserReadyListeners;
+
+    private LaserConnector(){
+        mOnLaserReadyListeners = new HashSet<>();
+
+        initServer();
+    }
+
+    private void initServer(){
+        if(mOnReadyServer == null){
+            try{
+                mOnReadyServer = new OnReadyServer(Settings.ON_READY_SERVER_PORT);
+                mOnReadyServer.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
+            }catch (Exception e){
+                e.printStackTrace();
+            }
         }
     }
 
     private String getLaserHttpAddress(){
-        Settings settings = Settings.getCurrentSettings();
-        return String.format("http://%s:%d", settings.getLaserAddress(), settings.getLaserPort());
+        return String.format("http://%s:%d", Settings.LASER_ADDRESS, Settings.LASER_PORT);
     }
 
     public void addOnLaserReadyListeners(OnLaserReadyListener listener){
@@ -69,6 +69,10 @@ public class LaserConnector implements Settings.OnChangedListener {
         for( OnLaserReadyListener listener : mOnLaserReadyListeners){
             listener.onReady();
         }
+    }
+
+    public void makeJobPostAsync( String job ){
+        new LaserJobAsyncTask(this).execute(job);
     }
 
     public synchronized boolean makeJobPost(String json) {
@@ -132,8 +136,7 @@ public class LaserConnector implements Settings.OnChangedListener {
 
         private void handleLaserReady(IHTTPSession session){
             try{
-                Settings settings = Settings.getCurrentSettings();
-                String laserIp = settings.getLaserAddress();
+                String laserIp = Settings.LASER_ADDRESS;
                 String requestIp = session.getHeaders().get("http-client-ip");
 
                 if(requestIp.equals(laserIp)){
@@ -146,18 +149,14 @@ public class LaserConnector implements Settings.OnChangedListener {
     }
 
     public void startServer(){
-        if(mOnReadyServer == null){
-            try{
-                mOnReadyServer = new OnReadyServer(Settings.getCurrentSettings().getOnReadyServerPort());
-                mOnReadyServer.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-            }catch (Exception e){
-                e.printStackTrace();
-            }
+        try {
+            mOnReadyServer.start();
+        }catch(IOException e){
+            e.printStackTrace();
         }
     }
 
     public void stopServer(){
         mOnReadyServer.stop();
-        mOnReadyServer = null;
     }
 }
