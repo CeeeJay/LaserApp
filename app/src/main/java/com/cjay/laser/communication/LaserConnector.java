@@ -51,7 +51,7 @@ public class LaserConnector{
      * @return Eine HTTP Adresse zum Ansprechen des Lasers
      */
     private String getLaserHttpAddress(){
-        return String.format("http://%s:%d", Settings.LASER_ADDRESS, Settings.LASER_PORT, Locale.GERMAN);
+        return String.format(Locale.GERMAN, "http://%s:%d", Settings.LASER_ADDRESS, Settings.LASER_PORT);
     }
 
     /**
@@ -194,7 +194,9 @@ public class LaserConnector{
                 String laserIp = Settings.LASER_ADDRESS;
                 String requestIp = session.getHeaders().get("http-client-ip");
 
+                //Überprüfen ob Sever IP die geleiche ist, wie die in der App hinterlegte
                 if(requestIp.equals(laserIp)){
+                    //Informieren, dass Laser mit unserem Job fertig ist
                     invokeOnLaserReadyListener();
                 }
             }catch (Exception e){
