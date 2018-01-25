@@ -1,5 +1,7 @@
 package com.cjay.laser.communication;
 
+import android.util.Log;
+
 import com.cjay.laser.Settings;
 
 import java.io.BufferedOutputStream;
@@ -33,57 +35,85 @@ public class LaserConnector{
     }
 
     private NanoHTTPD mOnReadyServer;
-    private HashSet<OnLaserReadyListener> mOnLaserReadyListeners;
+    private HashSet<OnLaserChangeListener> mOnLaserChangeListeners;
 
     private LaserConnector(){
-        mOnLaserReadyListeners = new HashSet<>();
-
-        initServer();
+        mOnLaserChangeListeners = new HashSet<>();
+        mOnReadyServer = new OnReadyServer(Settings.ON_READY_SERVER_PORT);
     }
 
-    private void initServer(){
-        if(mOnReadyServer == null){
-            try{
-                mOnReadyServer = new OnReadyServer(Settings.ON_READY_SERVER_PORT);
-                mOnReadyServer.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-            }catch (Exception e){
-                e.printStackTrace();
-            }
-        }
-    }
-
+    /**
+     * Gibt die HTTP Adresse des Lasers
+     * @return HTTP adresse
+     */
     private String getLaserHttpAddress(){
         return String.format("http://%s:%d", Settings.LASER_ADDRESS, Settings.LASER_PORT);
     }
 
-    public void addOnLaserReadyListeners(OnLaserReadyListener listener){
+    /**
+     * Fügt einen Beobachter der Schnittstelle hinzu
+     * Falls der Laser einen Ready GET sendet,
+     * oder einen Job annimmt oder ablehnt gibt der dem Beobachter bescheid.
+     * @param listener a listener
+     */
+    public void addOnLaserChangeListener(OnLaserChangeListener listener){
         if(listener != null)
-            mOnLaserReadyListeners.add(listener);
+            mOnLaserChangeListeners.add(listener);
     }
 
-    public void removeOnLaserReadyListeners(OnLaserReadyListener listener){
-        mOnLaserReadyListeners.remove(listener);
+    /**
+     * Entfernt einen Beobachter
+     * @param listener a listener
+     */
+    public void removeOnLaserChangeListener(OnLaserChangeListener listener){
+        mOnLaserChangeListeners.remove(listener);
     }
 
-    private void invokeOnLaserReadyListeners(){
-        for( OnLaserReadyListener listener : mOnLaserReadyListeners){
+    /**
+     * Aufrufen der onReady Methoden aller listener
+     */
+    private void invokeOnLaserReadyListener(){
+        for( OnLaserChangeListener listener : mOnLaserChangeListeners){
             listener.onReady();
         }
     }
 
+    /**
+     * Aufrufen der onJobEvent Methoden aller listener
+     * @param accept Zeigt an ob das Job Event erfolgreich oder nicht
+     *               erfolgreich war.
+     */
+    private void invokeOnLaserAcceptJobListener(boolean accept){
+        for( OnLaserChangeListener listener : mOnLaserChangeListeners){
+            listener.onJobEvent(accept);
+        }
+    }
+
+    /**
+     * Stößt eine asyncrone Jobübertragung an
+     * @param job ein Job im json format
+     */
     public void makeJobPostAsync( String job ){
         new LaserJobAsyncTask(this).execute(job);
     }
 
-    public synchronized boolean makeJobPost(String json) {
+    /**
+     * Hier wird verbindung zum Laser aufgebaut und ihm wird versucht einen
+     * Job anzubieten
+     * Je nachdem on der Laser abblehnt oder einstimmt wird diese Entscheidung
+     * allen Beobachtern mitgeteilt
+     * @param job
+     * @return
+     */
+    public synchronized boolean makeJobPost(String job) {
         boolean jobAccepted = false;
         HttpURLConnection connection = null;
 
         try
         {
-            connection = openConnection(json.length());
+            connection = openConnection(job.length());
 
-            byte[] jsonBytes = json.getBytes("UTF-8");
+            byte[] jsonBytes = job.getBytes("UTF-8");
 
             BufferedOutputStream outputStream = new BufferedOutputStream(connection.getOutputStream());
             outputStream.write(jsonBytes);
@@ -106,9 +136,17 @@ public class LaserConnector{
             }
         }
 
+        invokeOnLaserAcceptJobListener(jobAccepted);
         return jobAccepted;
     }
 
+    /**
+     * Öffnet eine Verbindung zum Laser und setzt ein paar Header
+     * @param contentLength Die Länge des Contents der übermittelt werden soll
+     * @return Eine Verbindung zum Laser
+     * @throws IOException Falls verbindung nicht aufgebaut werden konnte wird eine
+     *          Exception geworfen
+     */
     private HttpURLConnection openConnection(int contentLength) throws  IOException{
         URL urlToLink = new URL(getLaserHttpAddress());
 
@@ -122,6 +160,11 @@ public class LaserConnector{
         return connection;
     }
 
+    /**
+     * Ein kleiner HTTP Server der GET Anfragen des Lasers annimmt,
+     * der durch die GET Anfrage aussagen will, dass er mit dem Job
+     * fertig ist.
+     */
     private class OnReadyServer extends NanoHTTPD {
 
         public OnReadyServer(int port){
@@ -130,17 +173,24 @@ public class LaserConnector{
 
         @Override
         public Response serve(IHTTPSession session) {
+            Log.i("Server","Receive");
             handleLaserReady(session);
             return newFixedLengthResponse("Ok");
         }
 
+        /**
+         * Bewertet den ankommenden GET Request.
+         * Stammt dieser wirklich vom Laser wird jeder Beobachter informiert,
+         * dass der Laser mit seinem Job fertig ist
+         * @param session
+         */
         private void handleLaserReady(IHTTPSession session){
             try{
                 String laserIp = Settings.LASER_ADDRESS;
                 String requestIp = session.getHeaders().get("http-client-ip");
 
                 if(requestIp.equals(laserIp)){
-                    invokeOnLaserReadyListeners();
+                    invokeOnLaserReadyListener();
                 }
             }catch (Exception e){
                 e.printStackTrace();
@@ -148,15 +198,21 @@ public class LaserConnector{
         }
     }
 
-    public void startServer(){
+    /**
+     * Setzt den HTTP server in Gang
+     */
+    public void start(){
         try {
-            mOnReadyServer.start();
+            mOnReadyServer.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
         }catch(IOException e){
             e.printStackTrace();
         }
     }
 
-    public void stopServer(){
+    /**
+     * Stoppt den HTTP Server
+     */
+    public void stop(){
         mOnReadyServer.stop();
     }
 }

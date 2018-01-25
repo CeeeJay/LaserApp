@@ -7,7 +7,7 @@ import android.view.View;
 import android.widget.Button;
 
 import com.cjay.laser.communication.LaserConnector;
-import com.cjay.laser.communication.LaserJobScheduler;
+import com.cjay.laser.communication.OnLaserChangeListener;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -20,13 +20,24 @@ public class MainActivity extends AppCompatActivity {
 
         connector = LaserConnector.getConnector();
 
+        connector.addOnLaserChangeListener(new OnLaserChangeListener() {
+            @Override
+            public void onReady() {
+                Log.i("Server","Ready");
+            }
+
+            @Override
+            public void onJobEvent(boolean accept) {
+                Log.i("Server","Event " + accept);
+            }
+        });
+
         Button button = findViewById(R.id.button);
         button.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View view) {
-                LaserJobScheduler scheduler = new LaserJobScheduler(connector);
-                scheduler.execute("{json text}");
+                connector.makeJobPostAsync("Test");
             }
         });
     }
@@ -34,13 +45,12 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        Log.i("Server","Start Server");
-        connector.startServer();
+        connector.start();
     }
 
     @Override
     protected void onStop() {
         super.onStop();
-        connector.stopServer();
+        connector.stop();
     }
 }

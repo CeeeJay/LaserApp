@@ -5,9 +5,8 @@ import android.content.SharedPreferences;
 import java.util.HashSet;
 
 /**
- * Created by Christopher on 20.01.2018.
+ * Ein paar kleine Einstellungen zum Laser und dem Server.
  */
-
 public class Settings {
 
     public static final String LASER_ADDRESS = "10.0.2.2";
