@@ -11,13 +11,17 @@ import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.HashSet;
+import java.util.Locale;
 
 import fi.iki.elonen.NanoHTTPD;
 
 /**
- * Created by Christopher on 20.01.2018.
+ * Eine Schnittstelle, die sich um die Verbindung mit dem Laser kümmert.
+ * Sie stellt zum einen die Funktionalität zur verfügung Aufträge dem
+ * Laser Host zu senden.
+ * Zum Anderen wartet ein HTTP Server auf GET anfragen des Laser Hostes,
+ * welche ein Ende eines Jobs signalisieren.
  */
-
 public class LaserConnector{
 
     private static LaserConnector sInstance;
@@ -43,18 +47,18 @@ public class LaserConnector{
     }
 
     /**
-     * Gibt die HTTP Adresse des Lasers
-     * @return HTTP adresse
+     * Baut die HTTP Adresse des Lasers zusammen
+     * @return Eine HTTP Adresse zum Ansprechen des Lasers
      */
     private String getLaserHttpAddress(){
-        return String.format("http://%s:%d", Settings.LASER_ADDRESS, Settings.LASER_PORT);
+        return String.format("http://%s:%d", Settings.LASER_ADDRESS, Settings.LASER_PORT, Locale.GERMAN);
     }
 
     /**
      * Fügt einen Beobachter der Schnittstelle hinzu
      * Falls der Laser einen Ready GET sendet,
      * oder einen Job annimmt oder ablehnt gibt der dem Beobachter bescheid.
-     * @param listener a listener
+     * @param listener Ein Beobachter, welcher über Geschehnisse informiert werden will
      */
     public void addOnLaserChangeListener(OnLaserChangeListener listener){
         if(listener != null)
@@ -62,15 +66,15 @@ public class LaserConnector{
     }
 
     /**
-     * Entfernt einen Beobachter
-     * @param listener a listener
+     * Entfernt einen Beobachter aus dem Verteiler
+     * @param listener Ein Beobachter, welcher über Geschehnisse nicht mehr informiert werden will
      */
     public void removeOnLaserChangeListener(OnLaserChangeListener listener){
         mOnLaserChangeListeners.remove(listener);
     }
 
     /**
-     * Aufrufen der onReady Methoden aller listener
+     * Aufrufen der onReady Methoden aller Beobachter
      */
     private void invokeOnLaserReadyListener(){
         for( OnLaserChangeListener listener : mOnLaserChangeListeners){
@@ -79,8 +83,8 @@ public class LaserConnector{
     }
 
     /**
-     * Aufrufen der onJobEvent Methoden aller listener
-     * @param accept Zeigt an ob das Job Event erfolgreich oder nicht
+     * Aufrufen der onJobEvent Methoden aller Beobachter
+     * @param accept Zeigt an ob eine Job Anfrage erfolgreich oder nicht
      *               erfolgreich war.
      */
     private void invokeOnLaserAcceptJobListener(boolean accept){
@@ -92,6 +96,7 @@ public class LaserConnector{
     /**
      * Stößt eine asyncrone Jobübertragung an
      * @param job ein Job im json format
+     * TODO: Eventuell ersetzen durch ein representatives Objekt?
      */
     public void makeJobPostAsync( String job ){
         new LaserJobAsyncTask(this).execute(job);
@@ -102,8 +107,8 @@ public class LaserConnector{
      * Job anzubieten
      * Je nachdem on der Laser abblehnt oder einstimmt wird diese Entscheidung
      * allen Beobachtern mitgeteilt
-     * @param job
-     * @return
+     * @param job Ein Job im Json Format
+     * @return true falls der Job angenommen wurde andererseits false
      */
     public synchronized boolean makeJobPost(String job) {
         boolean jobAccepted = false;
@@ -167,7 +172,7 @@ public class LaserConnector{
      */
     private class OnReadyServer extends NanoHTTPD {
 
-        public OnReadyServer(int port){
+        OnReadyServer(int port){
             super(port);
         }
 
@@ -182,7 +187,7 @@ public class LaserConnector{
          * Bewertet den ankommenden GET Request.
          * Stammt dieser wirklich vom Laser wird jeder Beobachter informiert,
          * dass der Laser mit seinem Job fertig ist
-         * @param session
+         * @param session Eine Session mit dem momentanen Client
          */
         private void handleLaserReady(IHTTPSession session){
             try{
