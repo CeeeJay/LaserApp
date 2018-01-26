@@ -1,5 +1,6 @@
 package com.cjay.laser.communication;
 
+import android.os.AsyncTask;
 import android.util.Log;
 
 import com.cjay.laser.Settings;
@@ -110,7 +111,7 @@ public class LaserConnector{
      * @param job Ein Job im Json Format
      * @return true falls der Job angenommen wurde andererseits false
      */
-    public synchronized boolean makeJobPost(String job) {
+    private synchronized boolean makeJobPost(String job) {
         boolean jobAccepted = false;
         HttpURLConnection connection = null;
 
@@ -141,7 +142,6 @@ public class LaserConnector{
             }
         }
 
-        invokeOnLaserAcceptJobListener(jobAccepted);
         return jobAccepted;
     }
 
@@ -222,4 +222,24 @@ public class LaserConnector{
     public void stop(){
         mOnReadyServer.stop();
     }
+
+    private static class LaserJobAsyncTask extends AsyncTask<String,Void,Boolean>{
+
+        private LaserConnector connector;
+        public LaserJobAsyncTask(LaserConnector connector){
+            this.connector = connector;
+        }
+
+        @Override
+        protected Boolean doInBackground(String... jobs) {
+            String job = jobs[0];
+            return connector.makeJobPost(job);
+        }
+
+        @Override
+        protected void onPostExecute(Boolean jobAccepted) {
+            connector.invokeOnLaserAcceptJobListener(jobAccepted);
+        }
+    }
+
 }
