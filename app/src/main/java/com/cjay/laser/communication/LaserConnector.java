@@ -1,7 +1,6 @@
 package com.cjay.laser.communication;
 
 import android.os.AsyncTask;
-import android.util.Log;
 
 import com.cjay.laser.Settings;
 
@@ -42,6 +41,11 @@ public class LaserConnector{
     private NanoHTTPD mOnReadyServer;
     private HashSet<OnLaserChangeListener> mOnLaserChangeListeners;
 
+    /**
+     * Erstellen einer Singelton instance
+     * Initialisieren des HashSets der Beobachter und eines HTTP Servers für ankommende Ready GET
+     * Anfragen
+     */
     private LaserConnector(){
         mOnLaserChangeListeners = new HashSet<>();
         mOnReadyServer = new OnReadyServer(Settings.ON_READY_SERVER_PORT);
@@ -97,7 +101,7 @@ public class LaserConnector{
     /**
      * Stößt eine asyncrone Jobübertragung an
      * @param job ein Job im json format
-     * TODO: Eventuell ersetzen durch ein representatives Objekt?
+     * TODO: job Eventuell ersetzen durch ein representatives Objekt?
      */
     public void makeJobPostAsync( String job ){
         new LaserJobAsyncTask(this).execute(job);
@@ -128,7 +132,7 @@ public class LaserConnector{
             BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
             String res = in.readLine();
 
-            jobAccepted = res.equals("Ok");
+            jobAccepted = res.equals(Settings.ACCEPT_JOB_ANSWER);
         }
         catch (IOException e)
         {
@@ -196,9 +200,8 @@ public class LaserConnector{
 
         @Override
         public Response serve(IHTTPSession session) {
-            Log.i("Server","Receive");
             handleLaserReady(session);
-            return newFixedLengthResponse("Ok");
+            return newFixedLengthResponse(Settings.READY_RESOPNSE_ANSWER);
         }
 
         /**

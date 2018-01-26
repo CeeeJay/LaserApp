@@ -19,4 +19,8 @@ public class Settings {
      * Port des Lokalen Servers, welcher auf GET Anfragen des Lasers wartet.
      */
     public static final int ON_READY_SERVER_PORT = 8001;
+
+    public static final String ACCEPT_JOB_ANSWER = "Ok";
+
+    public static final String READY_RESOPNSE_ANSWER = "Ok";
 }
