@@ -166,6 +166,24 @@ public class LaserConnector{
     }
 
     /**
+     * Setzt den HTTP server in Gang
+     */
+    public void start(){
+        try {
+            mOnReadyServer.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
+        }catch(IOException e){
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Stoppt den HTTP Server
+     */
+    public void stop(){
+        mOnReadyServer.stop();
+    }
+
+    /**
      * Ein kleiner HTTP Server der GET Anfragen des Lasers annimmt,
      * der durch die GET Anfrage aussagen will, dass er mit dem Job
      * fertig ist.
@@ -206,23 +224,8 @@ public class LaserConnector{
     }
 
     /**
-     * Setzt den HTTP server in Gang
+     * Ein asyncroner Task zum asyncronen senden von Job Angeboten
      */
-    public void start(){
-        try {
-            mOnReadyServer.start(NanoHTTPD.SOCKET_READ_TIMEOUT, false);
-        }catch(IOException e){
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Stoppt den HTTP Server
-     */
-    public void stop(){
-        mOnReadyServer.stop();
-    }
-
     private static class LaserJobAsyncTask extends AsyncTask<String,Void,Boolean>{
 
         private LaserConnector connector;
