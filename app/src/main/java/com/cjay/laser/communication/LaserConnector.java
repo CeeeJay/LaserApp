@@ -22,7 +22,7 @@ import fi.iki.elonen.NanoHTTPD;
  * Zum Anderen wartet ein HTTP Server auf GET anfragen des Laser Hostes,
  * welche ein Ende eines Jobs signalisieren.
  */
-public class LaserConnector{
+public class LaserConnector implements Settings.OnChangedListener{
 
     private static LaserConnector sInstance;
 
@@ -48,7 +48,21 @@ public class LaserConnector{
      */
     private LaserConnector(){
         mOnLaserChangeListeners = new HashSet<>();
-        mOnReadyServer = new OnReadyServer(Settings.ON_READY_SERVER_PORT);
+        Settings.setOnChangedListeners(this);
+    }
+
+    private void initServer(){
+        Settings settings = Settings.getCurrentSettings();
+        mOnReadyServer = new OnReadyServer(settings.getOnReadyServerPort());
+    }
+
+    @Override
+    public void onSettingsChanged(Settings newSettings) {
+        if(newSettings.getOnReadyServerPort() != mOnReadyServer.getListeningPort()){
+            stop();
+            initServer();
+            start();
+        }
     }
 
     /**
@@ -56,7 +70,8 @@ public class LaserConnector{
      * @return Eine HTTP Adresse zum Ansprechen des Lasers
      */
     private String getLaserHttpAddress(){
-        return String.format(Locale.GERMAN, "http://%s:%d", Settings.LASER_ADDRESS, Settings.LASER_PORT);
+        Settings settings = Settings.getCurrentSettings();
+        return String.format(Locale.GERMAN, "http://%s:%d", settings.getLaserAddress(), settings.getLaserPort());
     }
 
     /**
@@ -132,7 +147,7 @@ public class LaserConnector{
             BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
             String res = in.readLine();
 
-            jobAccepted = res.equals(Settings.ACCEPT_JOB_ANSWER);
+            jobAccepted = res.equals(Settings.getCurrentSettings().getLaserAddress());
         }
         catch (IOException e)
         {
@@ -201,7 +216,7 @@ public class LaserConnector{
         @Override
         public Response serve(IHTTPSession session) {
             handleLaserReady(session);
-            return newFixedLengthResponse(Settings.READY_RESOPNSE_ANSWER);
+            return newFixedLengthResponse("Ok");
         }
 
         /**
@@ -212,7 +227,7 @@ public class LaserConnector{
          */
         private void handleLaserReady(IHTTPSession session){
             try{
-                String laserIp = Settings.LASER_ADDRESS;
+                String laserIp = Settings.getCurrentSettings().getLaserAddress();
                 String requestIp = session.getHeaders().get("http-client-ip");
 
                 //Überprüfen ob Sever IP die geleiche ist, wie die in der App hinterlegte
