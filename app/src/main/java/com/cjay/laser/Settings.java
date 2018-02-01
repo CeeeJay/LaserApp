@@ -71,8 +71,8 @@ public class Settings {
      */
     private Settings(SharedPreferences preferences){
         mLaserAddress = preferences.getString("laser_adress","10.0.2.2");
-        mLaserPort = preferences.getInt("laser_port",8000);
-        mOnReadyServerPort = preferences.getInt("on_ready_server_port",8001);
+        mLaserPort = preferences.getInt("laser_port",1337);
+        mOnReadyServerPort = preferences.getInt("on_ready_server_port",1336);
     }
 
     /**

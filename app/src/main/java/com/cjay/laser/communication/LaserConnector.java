@@ -1,6 +1,7 @@
 package com.cjay.laser.communication;
 
 import android.os.AsyncTask;
+import android.util.Log;
 
 import com.cjay.laser.Settings;
 
@@ -14,6 +15,8 @@ import java.util.HashSet;
 import java.util.Locale;
 
 import fi.iki.elonen.NanoHTTPD;
+
+import static android.content.ContentValues.TAG;
 
 /**
  * Eine Schnittstelle, die sich um die Verbindung mit dem Laser kümmert.
@@ -49,6 +52,7 @@ public class LaserConnector implements Settings.OnChangedListener{
     private LaserConnector(){
         mOnLaserChangeListeners = new HashSet<>();
         Settings.setOnChangedListeners(this);
+        initServer();
     }
 
     private void initServer(){
@@ -71,7 +75,7 @@ public class LaserConnector implements Settings.OnChangedListener{
      */
     private String getLaserHttpAddress(){
         Settings settings = Settings.getCurrentSettings();
-        return String.format(Locale.GERMAN, "http://%s:%d", settings.getLaserAddress(), settings.getLaserPort());
+        return String.format(Locale.GERMAN, "http://%s:%d/REQUEST_ENGRAVING", settings.getLaserAddress(), settings.getLaserPort());
     }
 
     /**
@@ -138,6 +142,8 @@ public class LaserConnector implements Settings.OnChangedListener{
         {
             connection = openConnection(job.length());
 
+            Log.i("Server", "try send: " + job);
+
             byte[] jsonBytes = job.getBytes("UTF-8");
 
             BufferedOutputStream outputStream = new BufferedOutputStream(connection.getOutputStream());
@@ -146,7 +152,7 @@ public class LaserConnector implements Settings.OnChangedListener{
 
             BufferedReader in = new BufferedReader(new InputStreamReader(connection.getInputStream()));
             String res = in.readLine();
-
+            Log.i("Server", "makeJobPost: " + res);
             jobAccepted = res.equals(Settings.getCurrentSettings().getLaserAddress());
         }
         catch (IOException e)

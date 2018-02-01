@@ -2,6 +2,7 @@ package com.cjay.laser;
 
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.Preference;
 import android.preference.PreferenceManager;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -37,12 +38,13 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        //Zum Testen
         Button button = findViewById(R.id.button);
         button.setOnClickListener(new View.OnClickListener() {
 
             @Override
             public void onClick(View view) {
-                connector.makeJobPostAsync("Test");
+                connector.makeJobPostAsync("{\"TXTAUSRHZ\":\"test\",\"BRENNCFG\":\"\",\"TXTGROESSE\":\"\",\"TXTSPIEGELN\":\"\",\"EXT_ID_TYPE\":\"\",\"TXTFONTS\":\"\",\"EXT_ID_VALUE\":\"\",\"TXTGRAVUR\":\"test\",\"TXTKURSIV\":\"\",\"TXTAUSRVK\":\"lsajlas\"}");
             }
         });
     }
